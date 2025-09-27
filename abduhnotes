@@ -1,0 +1,76 @@
+Abduh Notes - Raw Actuator Output Mode
+======================================
+
+Overview
+--------
+These changes disable all CAN bus transmissions from openpilot's control loop and
+replace them with an explicit raw actuator output stream. The goal is to expose the
+steering, braking, and throttle commands so that you can translate them for a micro-
+controller (MCU) yourself.
+
+Key changes
+-----------
+1. Added a new `rawActuatorOutput` message to the logging schema so the three values
+   are available through the standard messaging system. The message carries:
+   * `steering`  – the steering command (torque or steering angle depending on the
+     vehicle's steering control type).
+   * `braking`   – the braking demand derived from the longitudinal controller
+     (non-negative, represents commanded deceleration).
+   * `throttle`  – the throttle demand derived from the longitudinal controller
+     (non-negative, represents commanded acceleration).
+2. Updated `controlsd` to publish those values every control cycle (100 Hz) and to
+   record them with timestamps.
+3. Modified the car daemon so that CAN frames are never transmitted. Any attempt by
+   a brand-specific car interface to send CAN is blocked and a warning is logged the
+   first time it happens. This guarantees the vehicle's CAN bus remains untouched
+   while still allowing the rest of openpilot to run.
+
+How to consume the new output
+-----------------------------
+* **Console output** – When you run openpilot, the controls process prints a line
+  similar to `Raw actuator output: (0.123456, 0.000000, 0.245678) @ 2024-03-10T17:42:22.123456+00:00`
+  roughly 10 times per second. Each line carries an ISO-8601 UTC timestamp.
+* **CSV file output** – Every control cycle appends a row to `~/raw_actuator_output.csv`.
+  Columns are `iso_timestamp_utc`, `monotonic_time_ns`, `steering`, `braking`,
+  `throttle`. This file is flushed on every write so it can be tailed or copied
+  while openpilot is running.
+* **Messaging interface** – Subscribe to the `rawActuatorOutput` service to get the
+  data programmatically. Example Python snippet (requires the normal runtime
+  environment with cap'n proto installed):
+
+  ```python
+  import cereal.messaging as messaging
+
+  sm = messaging.SubMaster(['rawActuatorOutput'])
+  while True:
+      sm.update(100)
+      raw = sm['rawActuatorOutput']
+      print(raw.steering, raw.braking, raw.throttle, raw.monotonicTimeNanos)
+  ```
+
+  Because the values are published at 100 Hz they can be used directly as inputs to
+  another controller or micro-controller bridge.
+
+Implementation notes
+--------------------
+* Each published message now includes the controller cycle's monotonic timestamp in
+  nanoseconds so you can align it with other logs.
+* The throttle/brake split is computed from the longitudinal acceleration command:
+  positive acceleration becomes throttle, negative acceleration becomes braking. This
+  mirrors how openpilot's car-specific controllers interpret the `actuators.accel`
+  field.
+* Steering output automatically matches the configured steering controller: torque for
+  torque-controlled vehicles and steering angle for angle-controlled vehicles.
+* CAN suppression happens in two places for safety:
+  1. The shared CAN send callback now drops every message (logging a warning once).
+  2. The main car loop no longer publishes `sendcan` frames even if a controller
+     provides them.
+
+What to present
+---------------
+* Highlight that openpilot still computes the same high-level driving policy, but the
+  final actuation is exposed as `(steering, braking, throttle)` instead of CAN.
+* Mention that the data is accessible both as live console output and via the
+  `rawActuatorOutput` message, which can be bridged to any hardware.
+* Emphasize that vehicle CAN traffic is completely suppressed, making this safe for
+  bench testing or MCU prototyping without touching the actual vehicle bus.

@@ -41,6 +41,7 @@ _services: dict[str, tuple] = {
   "carState": (True, 100., 10),
   "carControl": (True, 100., 10),
   "carOutput": (True, 100., 10),
+  "rawActuatorOutput": (True, 100., 10),
   "longitudinalPlan": (True, 20., 10),
   "driverAssistance": (True, 20., 20),
   "procLog": (True, 0.5, 15),

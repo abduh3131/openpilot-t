@@ -18,6 +18,7 @@ from openpilot.selfdrive.controls.lib.latcontrol_angle import LatControlAngle, S
 from openpilot.selfdrive.controls.lib.latcontrol_torque import LatControlTorque
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl
 from openpilot.selfdrive.locationd.helpers import PoseCalibrator, Pose
+from openpilot.selfdrive.controls.raw_actuator_logger import RawActuatorLogger
 
 State = log.SelfdriveState.OpenpilotState
 LaneChangeState = log.LaneChangeState
@@ -38,11 +39,12 @@ class Controls:
     self.sm = messaging.SubMaster(['liveParameters', 'liveTorqueParameters', 'modelV2', 'selfdriveState',
                                    'liveCalibration', 'livePose', 'longitudinalPlan', 'carState', 'carOutput',
                                    'driverMonitoringState', 'onroadEvents', 'driverAssistance'], poll='selfdriveState')
-    self.pm = messaging.PubMaster(['carControl', 'controlsState'])
+    self.pm = messaging.PubMaster(['carControl', 'controlsState', 'rawActuatorOutput'])
 
     self.steer_limited_by_safety = False
     self.curvature = 0.0
     self.desired_curvature = 0.0
+    self.raw_logger = RawActuatorLogger()
 
     self.pose_calibrator = PoseCalibrator()
     self.calibrated_pose: Pose | None = None
@@ -206,6 +208,23 @@ class Controls:
     cc_send.valid = CS.canValid
     cc_send.carControl = CC
     self.pm.send('carControl', cc_send)
+
+    steering_cmd = float(CC.actuators.steeringAngleDeg if self.CP.steerControlType == car.CarParams.SteerControlType.angle
+                         else CC.actuators.torque)
+    accel_cmd = float(CC.actuators.accel)
+    braking_cmd = max(0.0, -accel_cmd)
+    throttle_cmd = max(0.0, accel_cmd)
+
+    raw_msg = messaging.new_message('rawActuatorOutput')
+    raw_msg.valid = CS.canValid
+    raw = raw_msg.rawActuatorOutput
+    raw.steering = steering_cmd
+    raw.braking = braking_cmd
+    raw.throttle = throttle_cmd
+    monotonic_ns = int(self.sm.logMonoTime.get('carState', 0))
+    raw.monotonicTimeNanos = monotonic_ns
+    self.pm.send('rawActuatorOutput', raw_msg)
+    self.raw_logger.log(steering_cmd, braking_cmd, throttle_cmd, monotonic_ns)
 
   def run(self):
     rk = Ratekeeper(100, print_delay_threshold=None)

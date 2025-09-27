@@ -2492,6 +2492,13 @@ struct AudioFeedback {
   blockNum @1 :UInt16;
 }
 
+struct RawActuatorOutput {
+  steering @0 :Float32;
+  braking @1 :Float32;
+  throttle @2 :Float32;
+  monotonicTimeNanos @3 :UInt64;
+}
+
 struct Touch {
   sec @0 :Int64;
   usec @1 :Int64;
@@ -2534,6 +2541,7 @@ struct Event {
     carState @22 :Car.CarState;
     carControl @23 :Car.CarControl;
     carOutput @127 :Car.CarOutput;
+    rawActuatorOutput @150 :RawActuatorOutput;
     longitudinalPlan @24 :LongitudinalPlan;
     driverAssistance @132 :DriverAssistance;
     ubloxGnss @34 :UbloxGnss;
