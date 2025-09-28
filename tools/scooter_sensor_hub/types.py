@@ -18,6 +18,16 @@ class SensorKind(str, Enum):
 
 
 @dataclass(frozen=True, slots=True)
+class HostEnvironment:
+  """Description of the host where the hub is running."""
+
+  identifier: str
+  description: str
+  launch_prefix: tuple[str, ...] = ()
+  notes: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class DetectedSensor:
   """Information about a device discovered on the host system."""
 

@@ -11,11 +11,13 @@ import cereal.messaging as messaging
 from cereal import log
 
 from .detectors import ConfigDetector, SerialDeviceDetector, VideoDeviceDetector, load_sensor_overrides
+from .environment import detect_host_environment
 from .drivers import MockSensorDriver, SensorDriverError, driver_for_sensor
 from .logging_utils import configure_logging
 from .preflight import run_preflight_checks
 from .types import (
   DetectedSensor,
+  HostEnvironment,
   PrepStepResult,
   Publisher,
   SensorKind,
@@ -73,10 +75,17 @@ class MessagingPublisher(Publisher):
 class SensorHub:
   """Manage device discovery, sensor streaming, and autopilot lifecycle."""
 
-  def __init__(self, publisher: Optional[Publisher] = None, repo_root: Optional[Path] = None) -> None:
+  def __init__(
+    self,
+    publisher: Optional[Publisher] = None,
+    repo_root: Optional[Path] = None,
+    host_environment: Optional[HostEnvironment] = None,
+  ) -> None:
     self.publisher = publisher or MessagingPublisher()
     self.repo_root = repo_root or Path(__file__).resolve().parents[2]
     self.logger, self.log_file = configure_logging()
+    self.host_environment = host_environment or detect_host_environment()
+    self._environment_locked = host_environment is not None
 
     overrides = load_sensor_overrides()
     self.detectors = [
@@ -249,7 +258,15 @@ class SensorHub:
   def prepare_environment(self) -> List[PrepStepResult]:
     """Ensure dependencies, directories, and assets are available."""
 
-    results = run_preflight_checks(self.repo_root, self.log_file.parent, self.autopilot_log_path)
+    if not self._environment_locked:
+      self.host_environment = detect_host_environment()
+
+    results = run_preflight_checks(
+      self.repo_root,
+      self.log_file.parent,
+      self.autopilot_log_path,
+      host_environment=self.host_environment,
+    )
 
     with self._lock:
       for result in results:
@@ -323,10 +340,13 @@ class SensorHub:
       if not script.exists():
         raise FileNotFoundError(f"Unable to locate {script}")
       log_handle = self.autopilot_log_path.open("a", buffering=1)
-      process = subprocess.Popen([str(script)], cwd=self.repo_root, stdout=log_handle, stderr=subprocess.STDOUT)
+      command = list(self.host_environment.launch_prefix) + [str(script)]
+      process = subprocess.Popen(command, cwd=self.repo_root, stdout=log_handle, stderr=subprocess.STDOUT)
       self._autopilot_process = process
       self._autopilot_log_handle = log_handle
-      self.logger.info("Started autopilot (PID %s)", process.pid)
+      self.logger.info(
+        "Started autopilot (PID %s) via %s", process.pid, self.host_environment.description
+      )
       return True, started_sensors
 
   def stop_autopilot(self) -> bool:

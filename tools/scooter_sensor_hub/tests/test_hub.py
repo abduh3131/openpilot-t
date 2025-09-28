@@ -10,6 +10,7 @@ from tools.scooter_sensor_hub.hub import SensorHub
 from tools.scooter_sensor_hub.drivers import MockSensorDriver, SensorDriverError
 from tools.scooter_sensor_hub.types import (
   DetectedSensor,
+  HostEnvironment,
   PrepStepResult,
   Publisher,
   SensorKind,
@@ -176,3 +177,49 @@ def test_start_sensor_falls_back_to_mock(monkeypatch, sample_sensor):
   session = hub.sessions[sample_sensor.identifier]
   assert isinstance(session.driver, MockSensorDriver)
   hub.stop_sensor(sample_sensor.identifier)
+
+
+def test_start_autopilot_uses_environment_prefix(monkeypatch, tmp_path):
+  repo_root = tmp_path
+  script = repo_root / "launch_openpilot.sh"
+  script.write_text("#!/bin/bash\necho hi\n", encoding="utf-8")
+  script.chmod(0o755)
+
+  publisher = FakePublisher()
+  host_env = HostEnvironment(
+    identifier="wsl",
+    description="Windows Subsystem for Linux",
+    launch_prefix=("/bin/bash",),
+    notes="",
+  )
+  hub = SensorHub(publisher=publisher, repo_root=repo_root, host_environment=host_env)
+  monkeypatch.setattr(hub, "scan_sensors", lambda: [])
+  monkeypatch.setattr(hub, "start_all_sensors", lambda: [])
+
+  captured: dict[str, list[str]] = {}
+
+  class DummyProcess:
+    pid = 1234
+
+    def poll(self):
+      return None
+
+    def terminate(self):
+      return None
+
+    def wait(self, timeout=None):
+      return 0
+
+    def kill(self):
+      return None
+
+  def fake_popen(cmd, **kwargs):
+    captured["cmd"] = cmd
+    return DummyProcess()
+
+  monkeypatch.setattr("tools.scooter_sensor_hub.hub.subprocess.Popen", fake_popen)
+
+  started, sensors = hub.start_autopilot()
+  assert started is True
+  assert sensors == []
+  assert captured["cmd"] == ["/bin/bash", str(script)]

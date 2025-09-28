@@ -71,6 +71,15 @@ def _print_sensor_test_results(results: Sequence[SensorTestResult]) -> None:
 def run_cli(hub: SensorHub) -> None:
   initial = hub.prepare_environment()
   _print_prep_results(initial)
+  env = hub.host_environment
+  print(
+    f"\nHost environment detected: {env.description} [{env.identifier}]"
+  )
+  if env.notes:
+    wrapped = textwrap.fill(
+      f"Notes: {env.notes}", width=78, subsequent_indent="       "
+    )
+    print(wrapped)
   hub.scan_sensors()
   while True:
     sensors = hub.get_detected()
@@ -100,7 +109,7 @@ def run_cli(hub: SensorHub) -> None:
       else:
         print("All configured sensors were already streaming.")
       if started:
-        print("Autopilot launch initiated.")
+        print(f"Autopilot launch initiated via {hub.host_environment.description}.")
       else:
         print("Autopilot already running.")
     elif choice == "t":

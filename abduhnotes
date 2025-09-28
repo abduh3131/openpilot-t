@@ -83,12 +83,73 @@ application located at `tools/scooter_sensor_hub`. It discovers USB and networke
 sensors, allows you to enable or disable them interactively, forwards their data into
 the new `sensorData` messaging stream, and can start/stop openpilot for you.
 
+### Important files in this workflow
+
+* `tools/scooter_sensor_hub/app.py` – command-line menu and user interaction.
+* `tools/scooter_sensor_hub/hub.py` – orchestrates discovery, drivers, and autopilot.
+* `tools/scooter_sensor_hub/environment.py` – detects VS Code, WSL, or Ubuntu and
+  chooses the correct launch command automatically.
+* `tools/scooter_sensor_hub/preflight.py` – preparation sweep (downloads submodules,
+  installs Python packages, creates log folders).
+* `tools/scooter_sensor_hub/drivers.py` – sensor streaming implementations (includes
+  mock sensors for demos).
+* `tools/scooter_sensor_hub/detectors.py` – discovers cameras, serial devices, and
+  static YAML entries.
+* `tools/scooter_sensor_hub/logging_utils.py` – centralised logging configuration.
+* `launch_openpilot.sh` – entry point the start button ultimately runs.
+
 ### Running the hub
 
 ```
 python -m tools.scooter_sensor_hub            # interactive menu
 python -m tools.scooter_sensor_hub --once     # just list what is detected
 ```
+
+At launch the program runs the preparation sweep automatically, prints the detected
+host environment, and lists any actions it performed (downloading submodules,
+installing Python packages, creating log directories, etc.). The `Prep & start
+autopilot` action repeats the sweep so a single button always ensures the system is
+ready before starting sensors or openpilot.
+
+**Environment-aware start button**
+
+The hub now profiles whether it is running in Visual Studio Code, Windows Subsystem
+for Linux (WSL), or native Ubuntu. The detection lives in
+`tools/scooter_sensor_hub/environment.py` and surfaces in both the CLI banner and the
+preparation summary (look for `Host environment: ...`). The start button tailors the
+command it launches accordingly:
+
+* VS Code terminals trigger the same `launch_openpilot.sh` script but keep working even
+  when VS Code is attached to WSL because the hub forces a bash-based launcher when it
+  is available.
+* WSL sessions automatically run the launch script via `/bin/bash` so Linux file
+  permissions and paths are respected.
+* Native Ubuntu hosts also run the script with bash to provide identical behaviour to
+  the VS Code and WSL setups.
+
+### Quick start per environment
+
+* **VS Code (Windows or Linux host)**
+  1. Open the repository folder in VS Code and start an integrated terminal or use the
+     "Run Python File" button on `tools/scooter_sensor_hub/app.py`.
+  2. Run `python -m tools.scooter_sensor_hub`.
+  3. Confirm the CLI prints `Host environment detected: Visual Studio Code terminal`.
+  4. Press `S` for "Prep & start autopilot" – dependencies are installed automatically
+     and openpilot launches via the VS Code-compatible bash wrapper.
+* **Windows Subsystem for Linux**
+  1. Open your WSL shell in the repository root.
+  2. Run `python -m tools.scooter_sensor_hub`.
+  3. The prep summary will state `Host environment: Windows Subsystem for Linux (...)`.
+  4. Press `S` to run the end-to-end startup (prep, auto-start sensors or mock
+     fallbacks, then launch openpilot through `/bin/bash`).
+* **Native Ubuntu**
+  1. Install Python 3.10+ and clone the repository.
+  2. From the repo root run `python -m tools.scooter_sensor_hub`.
+  3. The sweep will report `Host environment: Ubuntu` before listing the actions it
+     took.
+  4. Press `S` to prep, auto-enable sensors, and start openpilot – no manual
+     dependency setup is required because the sweep handles submodules and `pip`
+     packages.
 
 The menu presents:
 

@@ -6,7 +6,8 @@ import sys
 from pathlib import Path
 from typing import Iterable, List, Sequence
 
-from .types import PrepStepResult
+from .environment import detect_host_environment
+from .types import HostEnvironment, PrepStepResult
 
 __all__ = ["run_preflight_checks", "DEFAULT_SUBMODULES", "DEFAULT_PYTHON_DEPENDENCIES"]
 
@@ -84,10 +85,19 @@ def run_preflight_checks(
   autopilot_log: Path,
   submodules: Iterable[str] = DEFAULT_SUBMODULES,
   python_dependencies: dict[str, str] | None = None,
+  host_environment: HostEnvironment | None = None,
 ) -> List[PrepStepResult]:
   """Prepare the host so the sensor hub and openpilot can run seamlessly."""
 
-  results: List[PrepStepResult] = []
+  profile = host_environment or detect_host_environment()
+
+  results: List[PrepStepResult] = [
+    PrepStepResult(
+      step="Host environment",
+      status="ok",
+      detail=f"{profile.description} [{profile.identifier}]",
+    )
+  ]
   results.append(_ensure_directory(log_directory, "Sensor hub log directory"))
   results.append(_ensure_file(autopilot_log, "Autopilot log file"))
   results.append(_ensure_launch_script(repo_root / "launch_openpilot.sh"))
