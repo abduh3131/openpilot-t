@@ -98,10 +98,11 @@ The menu presents:
   per sensor and publishes `log.ExternalSensorData` packets via openpilot's messaging
   bus. Camera frames are JPEG-encoded, ultrasonic distances are sent as meters, and
   lidar packets are forwarded raw so you can decode them downstream.
-* `Prep & start autopilot`, which first runs a preparation sweep (see below) and then
-  calls `launch_openpilot.sh`. The command refuses to launch if any preparation step
-  fails so that missing dependencies never surprise you mid-demo. Logs are stored
-  under `~/.local/share/scooter_sensor_hub/autopilot.log`.
+* `Prep & start autopilot`, which re-runs the preparation sweep (see below), injects
+  mock sensors whenever nothing physical is detected, starts every available (or
+  mocked) feed automatically, and then calls `launch_openpilot.sh`. Preparation
+  warnings are printed but no longer block the launch so you truly have a one-click
+  workflow. Logs are stored under `~/.local/share/scooter_sensor_hub/autopilot.log`.
 * `Prep environment` to re-run the sweep without starting openpilot and `Test sensors`
   to run a driver self-test for every detected device. Results surface both in the
   menu output and the hub log so you can screenshot them.
@@ -121,7 +122,10 @@ The menu presents:
   `tools/scooter_sensor_hub/requirements.txt`.
 
 The sweep executes on program launch and again before starting autopilot, giving you a
-clean "one button" experience on a fresh Ubuntu host.
+clean "one button" experience on a fresh Ubuntu host. If real sensors or their drivers
+are missing, the hub now keeps going by spinning up mock camera/ultrasonic/lidar feeds
+and falling back to synthetic drivers for any device that fails to initialise. The
+menu marks those entries as "(mock)" so you can tell what is simulated.
 
 ### Sensor schema additions
 

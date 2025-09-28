@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import threading
 import time
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ __all__ = [
   "CameraDriver",
   "UltrasonicDriver",
   "LidarDriver",
+  "MockSensorDriver",
   "driver_for_sensor",
 ]
 
@@ -195,10 +197,68 @@ class LidarDriver(_BaseDriver):
 
 
 def driver_for_sensor(sensor: DetectedSensor) -> SensorDriver:
+  metadata_flag = str(sensor.metadata.get("mock", "")).lower() if sensor.metadata else ""
+  if metadata_flag in {"1", "true", "yes", "mock"}:
+    return MockSensorDriver(sensor)
   if sensor.kind is SensorKind.CAMERA:
     return CameraDriver(sensor)
   if sensor.kind is SensorKind.ULTRASONIC:
     return UltrasonicDriver(sensor)
   if sensor.kind is SensorKind.LIDAR:
     return LidarDriver(sensor)
-  raise SensorDriverError(f"No driver implemented for sensor kind {sensor.kind.value}")
+  return MockSensorDriver(sensor)
+
+
+class MockSensorDriver(_BaseDriver):
+  """Emit deterministic synthetic samples when hardware is absent."""
+
+  def __init__(self, sensor: DetectedSensor, period: float = 0.1):
+    super().__init__(sensor)
+    self._period = period
+
+  def start(self) -> None:
+    # No hardware to initialise.
+    return
+
+  def stream(self, publisher: Publisher, stop_event: threading.Event) -> None:
+    while not stop_event.is_set():
+      msg = log.Event.new_message("sensorData")
+      data = msg.sensorData
+      data.timestampMono = time.monotonic_ns()
+      data.sensorId = self.sensor.identifier
+      data.sequence = self._next_sequence()
+      data.confidence = 0.5
+
+      if self.sensor.kind is SensorKind.CAMERA:
+        data.type = log.ExternalSensorType.camera
+        camera = data.camera
+        camera.encoding = log.ExternalSensorCameraSample.CameraEncoding.raw
+        camera.width = 2
+        camera.height = 2
+        camera.frameRate = 10.0
+        camera.exposureUsec = 0
+        camera.captureMonoTime = data.timestampMono
+        camera.data = b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\xff\xff\xff"
+      elif self.sensor.kind is SensorKind.ULTRASONIC:
+        data.type = log.ExternalSensorType.ultrasonic
+        sample = data.ultrasonic
+        sample.distanceMeters = 1.0 + 0.25 * math.sin(data.sequence * 0.1)
+        sample.signalStrength = 0.5
+      elif self.sensor.kind is SensorKind.LIDAR:
+        data.type = log.ExternalSensorType.lidar
+        sample = data.lidar
+        sample.format = log.ExternalSensorLidarSample.PointCloudFormat.custom
+        sample.pointCount = 0
+        payload = f"mock lidar frame {data.sequence}".encode("utf-8")
+        sample.data = payload
+      else:
+        data.type = log.ExternalSensorType.other
+        data.raw = f"mock sample {data.sequence}".encode("utf-8")
+
+      publisher.send_sensor_data(msg)
+      stop_event.wait(self._period)
+
+    self.stop()
+
+  def stop(self) -> None:
+    return

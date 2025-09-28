@@ -27,7 +27,11 @@ def _print_sensors(sensors: Iterable[DetectedSensor], active: List[str]) -> None
   for idx, sensor in enumerate(sensors, start=1):
     empty = False
     status = "*" if sensor.identifier in active else " "
-    print(f"  [{idx:02d}] [{status}] {sensor.identifier} | {sensor.name} | {sensor.kind.value} | {sensor.path}")
+    metadata_flag = str(sensor.metadata.get("mock", "")).lower()
+    display_name = sensor.name
+    if metadata_flag in {"true", "1", "yes", "mock"}:
+      display_name = f"{display_name} (mock)"
+    print(f"  [{idx:02d}] [{status}] {sensor.identifier} | {display_name} | {sensor.kind.value} | {sensor.path}")
   if empty:
     print("  (none detected)")
 
@@ -88,12 +92,17 @@ def run_cli(hub: SensorHub) -> None:
       prep_results = hub.prepare_environment()
       _print_prep_results(prep_results)
       if any(result.status == "error" for result in prep_results):
-        print("Preparation reported issues. Resolve them before launching autopilot.")
-        continue
-      if hub.start_autopilot():
+        print("Preparation reported issues; continuing with mock fallbacks where needed.")
+      started, auto_started = hub.start_autopilot()
+      if auto_started:
+        started_list = ", ".join(auto_started)
+        print(f"Streaming sensors: {started_list}")
+      else:
+        print("All configured sensors were already streaming.")
+      if started:
         print("Autopilot launch initiated.")
       else:
-        print("Autopilot already running or failed to launch.")
+        print("Autopilot already running.")
     elif choice == "t":
       hub.stop_autopilot()
     elif choice == "p":

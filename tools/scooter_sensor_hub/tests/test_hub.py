@@ -7,6 +7,7 @@ import pytest
 from cereal import log
 
 from tools.scooter_sensor_hub.hub import SensorHub
+from tools.scooter_sensor_hub.drivers import MockSensorDriver, SensorDriverError
 from tools.scooter_sensor_hub.types import (
   DetectedSensor,
   PrepStepResult,
@@ -148,3 +149,30 @@ def test_sensor_self_test_uses_driver(monkeypatch, sample_sensor):
   results = hub.test_sensors()
   assert results and results[0].status == "ok"
   assert driver.started and driver.stopped
+
+
+def test_scan_injects_mock_when_none():
+  publisher = FakePublisher()
+  hub = SensorHub(publisher=publisher, repo_root=Path.cwd())
+  hub.detectors = [StaticDetector([])]
+  sensors = hub.scan_sensors()
+  assert sensors, "expected mock sensors to be injected"
+  assert any(sensor.metadata.get("mock") == "true" for sensor in sensors)
+
+
+def test_start_sensor_falls_back_to_mock(monkeypatch, sample_sensor):
+  publisher = FakePublisher()
+  hub = SensorHub(publisher=publisher, repo_root=Path.cwd())
+  hub.detectors = [StaticDetector([sample_sensor])]
+  hub.scan_sensors()
+
+  def fake_driver_for_sensor(sensor):
+    raise SensorDriverError("missing hardware")
+
+  monkeypatch.setattr("tools.scooter_sensor_hub.hub.driver_for_sensor", fake_driver_for_sensor)
+
+  assert hub.start_sensor(sample_sensor.identifier)
+  time.sleep(0.05)
+  session = hub.sessions[sample_sensor.identifier]
+  assert isinstance(session.driver, MockSensorDriver)
+  hub.stop_sensor(sample_sensor.identifier)
