@@ -7,7 +7,12 @@ import pytest
 from cereal import log
 
 from tools.scooter_sensor_hub.hub import SensorHub
-from tools.scooter_sensor_hub.types import DetectedSensor, Publisher, SensorKind
+from tools.scooter_sensor_hub.types import (
+  DetectedSensor,
+  PrepStepResult,
+  Publisher,
+  SensorKind,
+)
 
 
 class FakePublisher(Publisher):
@@ -106,3 +111,40 @@ def test_start_sensor_uses_driver(monkeypatch, sample_sensor):
   assert publisher.sensor_msgs, "sensor driver should have emitted a sample"
   hub.stop_sensor(sample_sensor.identifier)
   assert driver.stopped
+
+
+def test_prepare_environment_records_failures(monkeypatch):
+  publisher = FakePublisher()
+  hub = SensorHub(publisher=publisher, repo_root=Path.cwd())
+
+  expected = [
+    PrepStepResult(step="Example", status="error", detail="missing"),
+    PrepStepResult(step="Other", status="ok", detail="fine"),
+  ]
+
+  monkeypatch.setattr(
+    "tools.scooter_sensor_hub.hub.run_preflight_checks",
+    lambda *args, **kwargs: expected,
+  )
+
+  results = hub.prepare_environment()
+  assert results == expected
+  assert any("Example" in issue for issue in hub.issues)
+
+
+def test_sensor_self_test_uses_driver(monkeypatch, sample_sensor):
+  publisher = FakePublisher()
+  hub = SensorHub(publisher=publisher, repo_root=Path.cwd())
+  hub.detectors = [StaticDetector([sample_sensor])]
+  hub.scan_sensors()
+
+  driver = DummyDriver(sample_sensor)
+
+  def fake_driver_for_sensor(sensor):
+    return driver
+
+  monkeypatch.setattr("tools.scooter_sensor_hub.hub.driver_for_sensor", fake_driver_for_sensor)
+
+  results = hub.test_sensors()
+  assert results and results[0].status == "ok"
+  assert driver.started and driver.stopped

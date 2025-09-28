@@ -13,7 +13,14 @@ from cereal import log
 from .detectors import ConfigDetector, SerialDeviceDetector, VideoDeviceDetector, load_sensor_overrides
 from .drivers import SensorDriverError, driver_for_sensor
 from .logging_utils import configure_logging
-from .types import DetectedSensor, Publisher, SensorSession
+from .preflight import run_preflight_checks
+from .types import (
+  DetectedSensor,
+  PrepStepResult,
+  Publisher,
+  SensorSession,
+  SensorTestResult,
+)
 
 __all__ = [
   "MessagingPublisher",
@@ -169,6 +176,72 @@ class SensorHub:
   def stop_all_sensors(self) -> None:
     for sensor_id in list(self.sessions.keys()):
       self.stop_sensor(sensor_id)
+
+  # ---------------------------------------------------------------------------
+  # Preparation & diagnostics
+  # ---------------------------------------------------------------------------
+  def prepare_environment(self) -> List[PrepStepResult]:
+    """Ensure dependencies, directories, and assets are available."""
+
+    results = run_preflight_checks(self.repo_root, self.log_file.parent, self.autopilot_log_path)
+
+    with self._lock:
+      for result in results:
+        if result.status == "error":
+          self.issues.append(f"Prep failed: {result.step} ({result.detail})")
+      self.publish_state()
+
+    for result in results:
+      if result.status == "error":
+        self.logger.error("Preparation step failed: %s (%s)", result.step, result.detail)
+      else:
+        self.logger.info("Preparation step %s -> %s", result.step, result.status)
+
+    return results
+
+  def test_sensors(self) -> List[SensorTestResult]:
+    """Probe each detected sensor to confirm the driver can initialise it."""
+
+    with self._lock:
+      sensors = list(self.detected.values())
+      active_ids = set(self.sessions.keys())
+
+    results: List[SensorTestResult] = []
+    for sensor in sensors:
+      if sensor.identifier in active_ids:
+        results.append(SensorTestResult(sensor.identifier, "skipped", "already streaming"))
+        continue
+
+      driver = None
+      try:
+        driver = driver_for_sensor(sensor)
+        driver.start()
+      except SensorDriverError as exc:
+        self.logger.error("Self-test failed for %s: %s", sensor.identifier, exc)
+        results.append(SensorTestResult(sensor.identifier, "error", str(exc)))
+        continue
+      except Exception as exc:  # pragma: no cover - defensive
+        self.logger.exception("Unexpected failure initialising %s", sensor.identifier)
+        results.append(SensorTestResult(sensor.identifier, "error", str(exc)))
+        continue
+
+      try:
+        detail = "driver initialised"
+        results.append(SensorTestResult(sensor.identifier, "ok", detail))
+      finally:
+        try:
+          driver.stop()
+        except Exception:  # pragma: no cover - defensive
+          self.logger.exception("Error cleaning up driver for %s", sensor.identifier)
+
+    if any(result.status == "error" for result in results):
+      with self._lock:
+        for result in results:
+          if result.status == "error":
+            self.issues.append(f"Sensor self-test failed: {result.sensor_id} ({result.detail})")
+        self.publish_state()
+
+    return results
 
   # ---------------------------------------------------------------------------
   # Autopilot lifecycle

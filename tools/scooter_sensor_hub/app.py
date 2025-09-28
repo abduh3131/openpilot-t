@@ -3,19 +3,20 @@ from __future__ import annotations
 import argparse
 import textwrap
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Sequence
 
 from .hub import SensorHub
 from .logging_utils import LOG_FILE, configure_logging
-from .types import DetectedSensor
+from .types import DetectedSensor, PrepStepResult, SensorTestResult
 
 MENU = textwrap.dedent(
   """
   Scooter Sensor Hub
   ==================
-  [R] Rescan sensors      [E] Enable sensor      [D] Disable sensor
-  [S] Start autopilot     [T] Stop autopilot     [L] View hub log
-  [A] View autopilot log  [Q] Quit
+  [R] Rescan sensors        [E] Enable sensor      [D] Disable sensor
+  [S] Prep & start autopilot[P] Prep environment   [H] Test sensors
+  [T] Stop autopilot        [L] View hub log       [A] View autopilot log
+  [Q] Quit
   """
 )
 
@@ -43,7 +44,29 @@ def _tail_file(path: Path, lines: int = 40) -> None:
   print("--- end ---\n")
 
 
+def _print_prep_results(results: Sequence[PrepStepResult]) -> None:
+  print("\nPreparation summary:")
+  if not results:
+    print("  (no actions performed)")
+    return
+  for result in results:
+    detail = f" - {result.detail}" if result.detail else ""
+    print(f"  [{result.status.upper():>7}] {result.step}{detail}")
+
+
+def _print_sensor_test_results(results: Sequence[SensorTestResult]) -> None:
+  print("\nSensor self-test results:")
+  if not results:
+    print("  (no sensors detected)")
+    return
+  for result in results:
+    detail = f" - {result.detail}" if result.detail else ""
+    print(f"  [{result.status.upper():>7}] {result.sensor_id}{detail}")
+
+
 def run_cli(hub: SensorHub) -> None:
+  initial = hub.prepare_environment()
+  _print_prep_results(initial)
   hub.scan_sensors()
   while True:
     sensors = hub.get_detected()
@@ -62,9 +85,23 @@ def run_cli(hub: SensorHub) -> None:
       if sensor_id:
         hub.stop_sensor(sensor_id)
     elif choice == "s":
-      hub.start_autopilot()
+      prep_results = hub.prepare_environment()
+      _print_prep_results(prep_results)
+      if any(result.status == "error" for result in prep_results):
+        print("Preparation reported issues. Resolve them before launching autopilot.")
+        continue
+      if hub.start_autopilot():
+        print("Autopilot launch initiated.")
+      else:
+        print("Autopilot already running or failed to launch.")
     elif choice == "t":
       hub.stop_autopilot()
+    elif choice == "p":
+      prep_results = hub.prepare_environment()
+      _print_prep_results(prep_results)
+    elif choice == "h":
+      results = hub.test_sensors()
+      _print_sensor_test_results(results)
     elif choice == "l":
       _tail_file(LOG_FILE)
     elif choice == "a":

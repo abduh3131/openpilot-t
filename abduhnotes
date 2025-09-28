@@ -98,10 +98,30 @@ The menu presents:
   per sensor and publishes `log.ExternalSensorData` packets via openpilot's messaging
   bus. Camera frames are JPEG-encoded, ultrasonic distances are sent as meters, and
   lidar packets are forwarded raw so you can decode them downstream.
-* `Start autopilot` / `Stop autopilot` hooks, which simply call `launch_openpilot.sh`
-  (logs are stored under `~/.local/share/scooter_sensor_hub/autopilot.log`).
+* `Prep & start autopilot`, which first runs a preparation sweep (see below) and then
+  calls `launch_openpilot.sh`. The command refuses to launch if any preparation step
+  fails so that missing dependencies never surprise you mid-demo. Logs are stored
+  under `~/.local/share/scooter_sensor_hub/autopilot.log`.
+* `Prep environment` to re-run the sweep without starting openpilot and `Test sensors`
+  to run a driver self-test for every detected device. Results surface both in the
+  menu output and the hub log so you can screenshot them.
 * `View hub log` and `View autopilot log` shortcuts that tail the files under
   `~/.local/share/scooter_sensor_hub/` for presentation or debugging.
+
+### What the preparation sweep does
+
+* Ensures the log directory and autopilot log file exist under
+  `~/.local/share/scooter_sensor_hub/`.
+* Verifies `launch_openpilot.sh` is available and executable.
+* Runs `git submodule update --init --recursive` for `opendbc_repo`, `rednose_repo`,
+  and `tinygrad_repo` whenever those folders are missing so all code is present.
+* Checks for the Python packages required by the default drivers (`opencv-python`
+  for cameras and `pyserial` for serial sensors). If they are missing the program
+  installs them automatically using `pip`. You can review the exact packages in
+  `tools/scooter_sensor_hub/requirements.txt`.
+
+The sweep executes on program launch and again before starting autopilot, giving you a
+clean "one button" experience on a fresh Ubuntu host.
 
 ### Sensor schema additions
 

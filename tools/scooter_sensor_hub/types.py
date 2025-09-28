@@ -40,6 +40,24 @@ class SensorSession:
   thread: "threading.Thread"
 
 
+@dataclass(frozen=True, slots=True)
+class PrepStepResult:
+  """Outcome of a single environment preparation step."""
+
+  step: str
+  status: str
+  detail: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class SensorTestResult:
+  """Outcome of an on-demand sensor self test."""
+
+  sensor_id: str
+  status: str
+  detail: str = ""
+
+
 class SensorDriver:
   """Protocol for sensor streaming implementations."""
 
