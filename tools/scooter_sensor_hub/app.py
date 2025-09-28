@@ -1,13 +1,27 @@
 from __future__ import annotations
 
 import argparse
+import sys
 import textwrap
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence
 
-from .hub import SensorHub
-from .logging_utils import LOG_FILE, configure_logging
-from .models import DetectedSensor, PrepStepResult, SensorTestResult
+if __package__ in {None, ""}:
+  PACKAGE_DIR = Path(__file__).resolve().parent
+  PROJECT_ROOT = PACKAGE_DIR.parent.parent
+  if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+  from tools.scooter_sensor_hub.hub import SensorHub  # type: ignore
+  from tools.scooter_sensor_hub.logging_utils import LOG_FILE, configure_logging  # type: ignore
+  from tools.scooter_sensor_hub.models import (
+    DetectedSensor,
+    PrepStepResult,
+    SensorTestResult,
+  )  # type: ignore
+else:
+  from .hub import SensorHub
+  from .logging_utils import LOG_FILE, configure_logging
+  from .models import DetectedSensor, PrepStepResult, SensorTestResult
 
 MENU = textwrap.dedent(
   """
