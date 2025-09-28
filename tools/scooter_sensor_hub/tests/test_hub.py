@@ -8,7 +8,7 @@ from cereal import log
 
 from tools.scooter_sensor_hub.hub import SensorHub
 from tools.scooter_sensor_hub.drivers import MockSensorDriver, SensorDriverError
-from tools.scooter_sensor_hub.types import (
+from tools.scooter_sensor_hub.models import (
   DetectedSensor,
   HostEnvironment,
   PrepStepResult,

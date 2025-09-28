@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from cereal import log
 
-from .types import DetectedSensor, Publisher, SensorDriver, SensorKind
+from .models import DetectedSensor, Publisher, SensorDriver, SensorKind
 
 __all__ = [
   "SensorDriverError",

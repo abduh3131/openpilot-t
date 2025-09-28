@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Iterable, List, Sequence
 
 from .environment import detect_host_environment
-from .types import HostEnvironment, PrepStepResult
+from .models import HostEnvironment, PrepStepResult
 
 __all__ = ["run_preflight_checks", "DEFAULT_SUBMODULES", "DEFAULT_PYTHON_DEPENDENCIES"]
 

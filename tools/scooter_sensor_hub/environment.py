@@ -4,7 +4,7 @@ import os
 import platform
 from pathlib import Path
 
-from .types import HostEnvironment
+from .models import HostEnvironment
 
 __all__ = ["detect_host_environment"]
 

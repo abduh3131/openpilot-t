@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Mapping, MutableMapping
 
-from .types import DetectedSensor, SensorKind
+from .models import DetectedSensor, SensorKind
 
 CONFIG_DIR = Path.home() / ".config" / "scooter_sensor_hub"
 CONFIG_FILE = CONFIG_DIR / "sensors.yaml"

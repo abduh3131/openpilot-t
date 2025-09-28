@@ -7,7 +7,7 @@ from typing import Iterable, List, Optional, Sequence
 
 from .hub import SensorHub
 from .logging_utils import LOG_FILE, configure_logging
-from .types import DetectedSensor, PrepStepResult, SensorTestResult
+from .models import DetectedSensor, PrepStepResult, SensorTestResult
 
 MENU = textwrap.dedent(
   """

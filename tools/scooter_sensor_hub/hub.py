@@ -15,7 +15,7 @@ from .environment import detect_host_environment
 from .drivers import MockSensorDriver, SensorDriverError, driver_for_sensor
 from .logging_utils import configure_logging
 from .preflight import run_preflight_checks
-from .types import (
+from .models import (
   DetectedSensor,
   HostEnvironment,
   PrepStepResult,
