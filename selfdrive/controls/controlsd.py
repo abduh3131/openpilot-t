@@ -38,13 +38,17 @@ class Controls:
 
     self.sm = messaging.SubMaster(['liveParameters', 'liveTorqueParameters', 'modelV2', 'selfdriveState',
                                    'liveCalibration', 'livePose', 'longitudinalPlan', 'carState', 'carOutput',
-                                   'driverMonitoringState', 'onroadEvents', 'driverAssistance'], poll='selfdriveState')
+                                   'driverMonitoringState', 'onroadEvents', 'driverAssistance',
+                                   'sensorHubState', 'sensorData'],
+                                  poll='selfdriveState', ignore_alive=['sensorHubState', 'sensorData'])
     self.pm = messaging.PubMaster(['carControl', 'controlsState', 'rawActuatorOutput'])
 
     self.steer_limited_by_safety = False
     self.curvature = 0.0
     self.desired_curvature = 0.0
     self.raw_logger = RawActuatorLogger()
+    self.external_sensor_state: log.ExternalSensorHubState | None = None
+    self.external_sensor_cache: dict[str, log.ExternalSensorData] = {}
 
     self.pose_calibrator = PoseCalibrator()
     self.calibrated_pose: Pose | None = None
@@ -61,6 +65,13 @@ class Controls:
 
   def update(self):
     self.sm.update(15)
+    if self.sm.updated['sensorHubState']:
+      self.external_sensor_state = self.sm['sensorHubState']
+    if self.sm.updated['sensorData']:
+      packet = self.sm['sensorData']
+      self.external_sensor_cache[packet.sensorId] = packet
+      if len(self.external_sensor_cache) > 32:
+        self.external_sensor_cache.pop(next(iter(self.external_sensor_cache)))
     if self.sm.updated["liveCalibration"]:
       self.pose_calibrator.feed_live_calib(self.sm['liveCalibration'])
     if self.sm.updated["livePose"]:

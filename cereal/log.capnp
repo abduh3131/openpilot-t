@@ -2499,6 +2499,85 @@ struct RawActuatorOutput {
   monotonicTimeNanos @3 :UInt64;
 }
 
+enum ExternalSensorType {
+  camera @0;
+  ultrasonic @1;
+  lidar @2;
+  imu @3;
+  gps @4;
+  other @5;
+}
+
+struct ExternalSensorMetadataEntry {
+  key @0 :Text;
+  value @1 :Text;
+}
+
+struct ExternalSensorDevice {
+  sensorId @0 :Text;
+  name @1 :Text;
+  type @2 :ExternalSensorType;
+  transport @3 :Text;
+  path @4 :Text;
+  description @5 :Text;
+  metadataEntries @6 :List(ExternalSensorMetadataEntry);
+}
+
+struct ExternalSensorCameraSample {
+  enum CameraEncoding {
+    raw @0;
+    jpeg @1;
+    h264 @2;
+    h265 @3;
+  }
+
+  encoding @0 :CameraEncoding;
+  width @1 :UInt32;
+  height @2 :UInt32;
+  frameRate @3 :Float32;
+  exposureUsec @4 :UInt32;
+  captureMonoTime @5 :UInt64;
+  data @6 :Data;
+}
+
+struct ExternalSensorUltrasonicSample {
+  distanceMeters @0 :Float32;
+  signalStrength @1 :Float32;
+}
+
+struct ExternalSensorLidarSample {
+  enum PointCloudFormat {
+    xyz @0;
+    xyzIntensity @1;
+    custom @2;
+  }
+
+  format @0 :PointCloudFormat;
+  pointCount @1 :UInt32;
+  data @2 :Data;
+}
+
+struct ExternalSensorData {
+  timestampMono @0 :UInt64;
+  sensorId @1 :Text;
+  type @2 :ExternalSensorType;
+  sequence @3 :UInt64;
+  confidence @4 :Float32 = 1.0;
+  union {
+    camera @5 :ExternalSensorCameraSample;
+    ultrasonic @6 :ExternalSensorUltrasonicSample;
+    lidar @7 :ExternalSensorLidarSample;
+    raw @8 :Data;
+  }
+}
+
+struct ExternalSensorHubState {
+  timestampMono @0 :UInt64;
+  detectedSensors @1 :List(ExternalSensorDevice);
+  activeSensorIds @2 :List(Text);
+  issues @3 :List(Text);
+}
+
 struct Touch {
   sec @0 :Int64;
   usec @1 :Int64;
@@ -2542,6 +2621,8 @@ struct Event {
     carControl @23 :Car.CarControl;
     carOutput @127 :Car.CarOutput;
     rawActuatorOutput @150 :RawActuatorOutput;
+    sensorHubState @151 :ExternalSensorHubState;
+    sensorData @152 :ExternalSensorData;
     longitudinalPlan @24 :LongitudinalPlan;
     driverAssistance @132 :DriverAssistance;
     ubloxGnss @34 :UbloxGnss;

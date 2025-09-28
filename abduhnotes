@@ -74,3 +74,79 @@ What to present
   `rawActuatorOutput` message, which can be bridged to any hardware.
 * Emphasize that vehicle CAN traffic is completely suppressed, making this safe for
   bench testing or MCU prototyping without touching the actual vehicle bus.
+
+
+External Sensor Hub
+-------------------
+To feed external perception into openpilot, there is now a standalone Ubuntu-friendly
+application located at `tools/scooter_sensor_hub`. It discovers USB and networked
+sensors, allows you to enable or disable them interactively, forwards their data into
+the new `sensorData` messaging stream, and can start/stop openpilot for you.
+
+### Running the hub
+
+```
+python -m tools.scooter_sensor_hub            # interactive menu
+python -m tools.scooter_sensor_hub --once     # just list what is detected
+```
+
+The menu presents:
+
+* Live roster of every detected camera (`/dev/video*`), serial ultrasonic/lidar, and
+  any static entries you define in `~/.config/scooter_sensor_hub/sensors.yaml`.
+* Toggle controls to start/stop streaming per sensor. The program spins up a thread
+  per sensor and publishes `log.ExternalSensorData` packets via openpilot's messaging
+  bus. Camera frames are JPEG-encoded, ultrasonic distances are sent as meters, and
+  lidar packets are forwarded raw so you can decode them downstream.
+* `Start autopilot` / `Stop autopilot` hooks, which simply call `launch_openpilot.sh`
+  (logs are stored under `~/.local/share/scooter_sensor_hub/autopilot.log`).
+* `View hub log` and `View autopilot log` shortcuts that tail the files under
+  `~/.local/share/scooter_sensor_hub/` for presentation or debugging.
+
+### Sensor schema additions
+
+* `cereal/log.capnp` gained `ExternalSensorHubState`, `ExternalSensorData`, and helper
+  structs so that cameras, ultrasonic sensors, and lidar can report their payloads in
+  a structured way. The schema keeps metadata (transport, manufacturer, etc.), a
+  monotonic timestamp, and a sequence counter for each packet.
+* `cereal/services.py` registers two new services: `sensorHubState` (slow heartbeat of
+  the roster) and `sensorData` (up to 30 Hz samples).
+* `controlsd` subscribes to those services and caches the latest payloads so any
+  controller logic can ingest them without having to build another subscriber. You can
+  access the in-memory cache via a debugger or extend the controller to make autonomy
+  decisions based on scooter-specific sensors.
+
+### Adding custom sensors
+
+1. Create `~/.config/scooter_sensor_hub/sensors.yaml` with a structure such as:
+
+   ```yaml
+   sensors:
+     "static:front_lidar":
+       name: Front Lidar
+       kind: lidar
+       transport: udp
+       path: udp://192.168.1.50:7502
+       description: Primary forward-looking lidar
+   ```
+
+   Static entries show up alongside auto-detected hardware and can be toggled like the
+   others. Extend `driver_for_sensor` in `tools/scooter_sensor_hub/drivers.py` if you
+   need a bespoke streaming implementation.
+2. For USB serial hardware that does not include "lidar" or "ultrasonic" in its
+   descriptor, add an override in the same YAML file to force the desired type and
+   friendly name (e.g., `serial:ttyUSB0`).
+3. When a sensor is enabled, the hub publishes its metadata via `sensorHubState` and
+   streams samples via `sensorData`. Controls now sees those feeds, so you can modify
+   the scooter controller to read them (the cache is in
+   `Controls.external_sensor_cache`).
+
+### Presentation tips
+
+* Demonstrate the hub discovering a USB webcam by running `python -m
+  tools.scooter_sensor_hub --once` and showing how the identifier matches the one in
+  the menu.
+* Highlight that sensor data is timestamped with monotonic nanoseconds for easy
+  synchronization with the raw actuator CSV, enabling replay or sensor fusion later.
+* Use the log viewer shortcuts to show how the hub keeps track of any driver errors
+  (missing dependencies such as OpenCV/pyserial will surface there immediately).
