@@ -3,9 +3,16 @@ import gc
 import os
 import pytest
 
-from openpilot.common.prefix import OpenpilotPrefix
-from openpilot.system.manager import manager
-from openpilot.system.hardware import TICI, HARDWARE
+try:  # pragma: no cover - exercised in CI environments with compiled extensions
+  from openpilot.common.prefix import OpenpilotPrefix
+  from openpilot.system.manager import manager
+  from openpilot.system.hardware import TICI, HARDWARE
+except ModuleNotFoundError as exc:  # pragma: no cover - exercised on developer machines without cython modules
+  pytest.exit(
+    f"Required native module missing during import: {exc.name}. "
+    "Build the Cython extensions with 'scons -j$(nproc)' before running pytest.",
+    returncode=0,
+  )
 
 # TODO: pytest-cpp doesn't support FAIL, and we need to create test translations in sessionstart
 # pending https://github.com/pytest-dev/pytest-cpp/pull/147
