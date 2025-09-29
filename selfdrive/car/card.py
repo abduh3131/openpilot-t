@@ -52,8 +52,13 @@ def can_comm_callbacks(logcan: messaging.SubSocket, sendcan: messaging.PubSocket
       ret.append([CanData(msg.address, msg.dat, msg.src) for msg in can.can])
     return ret
 
+  warned_about_send = False
+
   def can_send(msgs: list[CanData]) -> None:
-    sendcan.send(can_list_to_can_capnp(msgs, msgtype='sendcan'))
+    nonlocal warned_about_send
+    if msgs and not warned_about_send:
+      cloudlog.warning("Blocking CAN send request; operating in raw actuator output mode")
+      warned_about_send = True
 
   return can_recv, can_send
 
@@ -79,6 +84,8 @@ class Car:
     self.params = Params()
 
     self.can_callbacks = can_comm_callbacks(self.can_sock, self.pm.sock['sendcan'])
+
+    self._logged_no_can = False
 
     is_release = self.params.get_bool("IsReleaseBranch")
 
@@ -239,7 +246,9 @@ class Car:
       # send car controls over can
       now_nanos = self.can_log_mono_time if REPLAY else int(time.monotonic() * 1e9)
       self.last_actuators_output, can_sends = self.CI.apply(CC, now_nanos)
-      self.pm.send('sendcan', can_list_to_can_capnp(can_sends, msgtype='sendcan', valid=CS.canValid))
+      if can_sends and not self._logged_no_can:
+        cloudlog.warning("CAN transmission suppressed; operating in raw actuator output mode")
+        self._logged_no_can = True
 
       self.CC_prev = CC
 
