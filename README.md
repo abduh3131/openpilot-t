@@ -65,6 +65,9 @@ openpilot is developed by [comma](https://comma.ai/) and by users like you. We w
 * Join the [community Discord](https://discord.comma.ai)
 * Check out [the contributing docs](docs/CONTRIBUTING.md)
 * Check out the [openpilot tools](tools/)
+* Use [`setup_openpilot.sh`](setup_openpilot.sh) on Ubuntu to bootstrap dependencies and build artifacts
+* Launch the desktop controller via [`tools/gui/openpilot_desktop.py`](tools/gui/openpilot_desktop.py) for a start/stop UI with live actuator telemetry
+* Read [Running openpilot on a Desktop](docs/running-openpilot.md) for a one-command setup and actuator monitoring walkthrough
 * Code documentation lives at https://docs.comma.ai
 * Information about running openpilot lives on the [community wiki](https://github.com/commaai/openpilot/wiki)
 
