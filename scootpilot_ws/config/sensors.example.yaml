@@ -1,0 +1,34 @@
+sensors:
+  camera:
+    enabled: true
+    type: uvc
+    device: /dev/video0
+    frame_rate: 30
+    resolution: [640, 480]
+  lidar:
+    enabled: false
+    type: rplidar
+    port: /dev/ttyUSB0
+    frame_rate: 10
+  ultrasonic:
+    enabled: false
+    type: serial_array
+    port: /dev/ttyUSB1
+    sensor_count: 3
+  imu:
+    enabled: true
+    type: generic
+    port: /dev/ttyUSB2
+  gnss:
+    enabled: false
+    type: nmea
+    port: /dev/ttyUSB3
+
+sim:
+  use_fake_camera: true
+  fake_camera_rate: 15
+  fake_scene: sidewalk
+  fake_objects:
+    - type: pedestrian
+      position: [5.0, 1.0]
+      velocity: [0.0, 0.0]

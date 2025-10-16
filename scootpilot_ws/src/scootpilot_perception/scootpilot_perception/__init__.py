@@ -1,0 +1,1 @@
+"""Perception stack for ScootPilot."""

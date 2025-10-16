@@ -1,0 +1,14 @@
+segmentation:
+  model_path: "models/drivable_seg.onnx"
+  mask_threshold: 0.5
+  smooth_kernel: 5
+  min_confidence: 0.2
+object_detection:
+  model_path: "models/object_det.onnx"
+  score_threshold: 0.3
+  nms_iou: 0.45
+fusion:
+  pedestrian_stop_distance: 2.5
+  slow_zone_distance: 5.0
+  driveway_slow_speed: 1.5
+  base_speed_limit: 3.0

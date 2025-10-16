@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="scootpilot">
+  <node id="1" lat="37.4219999" lon="-122.0840575" />
+  <node id="2" lat="37.4220999" lon="-122.0841575" />
+  <node id="3" lat="37.4221999" lon="-122.0842575" />
+  <node id="4" lat="37.4222999" lon="-122.0843575" />
+  <way id="10">
+    <nd ref="1" />
+    <nd ref="2" />
+    <nd ref="3" />
+    <nd ref="4" />
+    <tag k="highway" v="footway" />
+    <tag k="name" v="Sample Trail" />
+  </way>
+  <node id="20" lat="37.4223999" lon="-122.0844575" />
+  <node id="21" lat="37.4224999" lon="-122.0845575" />
+  <way id="11">
+    <nd ref="2" />
+    <nd ref="20" />
+    <nd ref="21" />
+    <tag k="highway" v="cycleway" />
+  </way>
+</osm>

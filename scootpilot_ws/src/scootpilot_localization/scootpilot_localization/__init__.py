@@ -1,0 +1,1 @@
+"""Localization nodes for ScootPilot."""

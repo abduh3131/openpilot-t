@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>scootpilot_bringup</name>
+  <version>0.1.0</version>
+  <description>Launch files and bringup utilities for ScootPilot.</description>
+  <maintainer email="dev@scootpilot.ai">ScootPilot Dev</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>scootpilot_sensors</exec_depend>
+  <exec_depend>scootpilot_perception</exec_depend>
+  <exec_depend>scootpilot_localization</exec_depend>
+  <exec_depend>scootpilot_planning</exec_depend>
+  <exec_depend>scootpilot_control</exec_depend>
+  <exec_depend>scootpilot_safety</exec_depend>
+  <exec_depend>scootpilot_gui</exec_depend>
+  <exec_depend>scootpilot_sim</exec_depend>
+</package>

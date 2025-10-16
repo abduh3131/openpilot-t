@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>scootpilot_gui</name>
+  <version>0.1.0</version>
+  <description>Operator GUI for ScootPilot.</description>
+  <maintainer email="dev@scootpilot.ai">ScootPilot Dev</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>PyQt6</exec_depend>

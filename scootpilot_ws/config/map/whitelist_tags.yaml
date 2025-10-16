@@ -1,0 +1,6 @@
+whitelist:
+  - footway
+  - path
+  - cycleway
+  - sidewalk
+  - shoulder

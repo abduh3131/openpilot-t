@@ -1,0 +1,7 @@
+safety:
+  ttc_threshold: 2.0
+  min_brake_time: 0.5
+  max_decel: 3.0
+  estop_latch: true
+  sensor_timeout: 1.0
+  fence_margin: 0.2

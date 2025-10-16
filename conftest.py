@@ -3,9 +3,17 @@ import gc
 import os
 import pytest
 
-from openpilot.common.prefix import OpenpilotPrefix
-from openpilot.system.manager import manager
-from openpilot.system.hardware import TICI, HARDWARE
+if os.environ.get('SCOOTPILOT_SKIP_OPENPILOT') == '1':
+  collect_ignore = []
+  collect_ignore_glob = []
+  def pytest_configure(config):
+    return
+  def pytest_sessionstart(session):
+    return
+else:
+  from openpilot.common.prefix import OpenpilotPrefix
+  from openpilot.system.manager import manager
+  from openpilot.system.hardware import TICI, HARDWARE
 
 # TODO: pytest-cpp doesn't support FAIL, and we need to create test translations in sessionstart
 # pending https://github.com/pytest-dev/pytest-cpp/pull/147
