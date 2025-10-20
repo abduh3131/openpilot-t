@@ -24,6 +24,7 @@ Extend the autonomous scooter pilot with a multimodal large-model co-driver, a n
 5. **Tooling + Documentation**
    - Updated dependency checks and `requirements.txt` for Torch and Transformers workloads.
    - Refreshed the primary README and supplied this report for traceability.
+   - Added `setup_scroot.py`, a turnkey bootstrapper that provisions a virtual environment and downloads pretrained weights.
 
 ## Testing Notes
 

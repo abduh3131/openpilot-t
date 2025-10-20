@@ -15,18 +15,23 @@ This package contains a self-contained autonomous driving stack tailored for lig
 
 ## Quick Start
 
-1. **Install dependencies** (Python 3.10+ recommended):
+1. **Run the bootstrapper** (creates a virtual environment and downloads models):
 
    ```bash
-   python -m pip install --upgrade pip
-   python -m pip install -r autonomy/requirements.txt
+   python setup_scroot.py
    ```
 
-   On Jetson devices you may prefer the Jetson-specific OpenCV or PyTorch builds. Adjust the requirement accordingly if you already have hardware-accelerated packages installed.
+   The script installs all Python dependencies into `.venv/`, caches the default YOLOv8, BLIP, and FLAN checkpoints under `models/`, and prepares runtime directories. Add `--skip-models` if you want to reuse previously downloaded weights.
 
-2. **Connect your camera** via USB and determine its index (usually `0`).
+2. **Activate the environment** created by the bootstrapper:
 
-3. **Launch the pilot** using the unified launcher:
+   ```bash
+   source .venv/bin/activate
+   ```
+
+3. **Connect your camera** via USB and determine its index (usually `0`).
+
+4. **Launch the pilot** using the unified launcher:
 
    ```bash
    python autonomy_launcher.py --camera 0 --visualize --command "drive 2 m forward"
@@ -39,6 +44,17 @@ This package contains a self-contained autonomous driving stack tailored for lig
    ```
 
    Press `q` in the visualization window or send `Ctrl+C` to exit.
+
+### Bootstrap Script Options
+
+`setup_scroot.py` accepts a few helpful flags:
+
+| Flag | Purpose |
+| --- | --- |
+| `--venv PATH` | Place the virtual environment in a custom directory (default: `./.venv`). |
+| `--models-dir PATH` | Choose where BLIP/FLAN checkpoints are stored (default: `./models`). |
+| `--skip-models` | Install Python packages but reuse previously downloaded model weights. |
+| `--upgrade` | Recreate the virtual environment from scratch before installing dependencies. |
 
 ## Configuration Options
 

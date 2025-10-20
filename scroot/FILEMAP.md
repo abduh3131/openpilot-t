@@ -9,6 +9,7 @@ This document walks through every artifact under `scroot/`, outlines how the pie
 | `README.md` | Operator-facing quick start guide for installing dependencies and launching the autonomy stack. |
 | `REPORT.md` | Development report summarizing design decisions, testing status, and future work items. |
 | `FILEMAP.md` | (This file) Complete description of modules, runtime flow, and dependency rationale. |
+| `setup_scroot.py` | One-shot bootstrap script that creates a virtual environment, installs dependencies, and caches pretrained models. |
 | `autonomy/` | Python package implementing sensing, perception, AI assistants, planning, control, and shared utilities. |
 | `autonomy_launcher.py` | Single-entry launch script that wires CLI arguments into the `AutonomyPilot` orchestrator and performs dependency checks before boot. |
 
