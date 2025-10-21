@@ -103,3 +103,19 @@ class CommandInterface:
             "raw_text": self._active_command.raw_text if self._active_command else None,
         }
         destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def update_command(self, text: str) -> HighLevelCommand:
+        """Parse and activate a new command provided programmatically."""
+
+        parsed = self._parser.parse(text)
+        self._active_command = parsed
+
+        if self._command_file is not None:
+            try:
+                self._command_file.write_text(text, encoding="utf-8")
+                self._last_mtime = self._command_file.stat().st_mtime
+            except OSError as exc:
+                logging.warning("Failed to persist command to %s: %s", self._command_file, exc)
+
+        logging.info("Updated operator command: %s", text)
+        return parsed

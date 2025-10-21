@@ -1,7 +1,7 @@
 # Development Report
 
 ## Objective
-Extend the autonomous scooter pilot with a multimodal large-model co-driver, a natural-language command interface, and accompanying documentation while keeping the stack ready for Jetson and Ubuntu deployments.
+Extend the autonomous scooter pilot with a multimodal large-model co-driver, a natural-language command interface, a graphical operations dashboard, and accompanying documentation while keeping the stack ready for Jetson and Ubuntu deployments.
 
 ## Key Enhancements
 
@@ -11,20 +11,24 @@ Extend the autonomous scooter pilot with a multimodal large-model co-driver, a n
 
 2. **Command Parsing Pipeline**
    - Introduced `autonomy/ai/command_interface.py` to normalize operator inputs such as “drive 2 m forward” or “turn right”.
-   - Commands can be injected once at launch (`--command`) or streamed live from a file (`--command-file`).
+   - Commands can be injected once at launch (`--command`), streamed live from a file (`--command-file`), or pushed programmatically via the GUI using the new `update_command` hook.
 
 3. **Navigator + Controller Updates**
    - `Navigator.plan` now consumes high-level commands, biasing turns, regulating speed, and surfacing goal context metadata.
    - The controller honors enforced stops so the scooter brakes immediately when the advisor flags a hazard or the operator issues a stop command.
 
 4. **Pilot Orchestration**
-   - `AutonomyPilot` coordinates the new components, exports JSON state files for dashboards, and prints actuator commands alongside advisor directives.
-   - Visualization overlays now display both actuator values and the latest advisory text for easier debugging.
+   - `AutonomyPilot` coordinates the new components, exports JSON state files for dashboards, emits `PilotSnapshot` telemetry for observers, and prints actuator commands alongside advisor directives.
+   - Visualization overlays now display both actuator values and the latest advisory text for easier debugging. The pilot also exposes `submit_command()` so external tools can feed in operator intents.
 
 5. **Tooling + Documentation**
-   - Updated dependency checks and `requirements.txt` for Torch and Transformers workloads.
+   - Updated dependency checks and `requirements.txt` for Torch, Transformers, and the new PyQt dashboard workload.
    - Refreshed the primary README and supplied this report for traceability.
    - Added `setup_scroot.py`, a turnkey bootstrapper that provisions a virtual environment and downloads pretrained weights.
+
+6. **Operations Dashboard**
+   - Delivered `autonomy/gui/dashboard.py`, a PyQt application that can run the setup script, launch/stop the autonomy loop, stream logs, and display the live camera feed with steering/throttle/brake overlays.
+   - The dashboard exposes a command console wired into the advisor so operators can type directives such as “use the bike lane” and watch the resulting actuator response.
 
 ## Testing Notes
 

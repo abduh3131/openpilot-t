@@ -10,7 +10,7 @@ This document walks through every artifact under `scroot/`, outlines how the pie
 | `REPORT.md` | Development report summarizing design decisions, testing status, and future work items. |
 | `FILEMAP.md` | (This file) Complete description of modules, runtime flow, and dependency rationale. |
 | `setup_scroot.py` | One-shot bootstrap script that creates a virtual environment, installs dependencies, and caches pretrained models. |
-| `autonomy/` | Python package implementing sensing, perception, AI assistants, planning, control, and shared utilities. |
+| `autonomy/` | Python package implementing sensing, perception, AI assistants, planning, control, GUI tooling, and shared utilities. |
 | `autonomy_launcher.py` | Single-entry launch script that wires CLI arguments into the `AutonomyPilot` orchestrator and performs dependency checks before boot. |
 
 ## Dependency Versions and Rationale
@@ -28,6 +28,7 @@ The stack is pinned to Python 3.10+ and depends on the following packages declar
 | `accelerate` | `>=0.25.0` | Streamlines device placement and mixed-precision execution for the advisor on Jetson GPUs. |
 | `sentencepiece` | `>=0.1.99` | Tokenizer dependency for FLAN-T5 language understanding. |
 | `safetensors` | `>=0.3.1` | Speeds up secure model weight loading for BLIP/FLAN checkpoints. |
+| `PyQt6` | `>=6.5.0` | Powers the cross-platform operations dashboard used for setup, monitoring, and live telemetry visualization. |
 
 Jetson deployments can swap in vendor-optimized wheels as long as the versions meet or exceed these baselines.
 
@@ -39,9 +40,9 @@ The `autonomy` package is deliberately split into feature-oriented subpackages. 
 Exports convenience imports so downstream code can instantiate `AutonomyPilot` and configuration dataclasses without deep module paths.
 
 ### `autonomy/pilot.py`
-Central orchestrator that binds sensors, perception, navigation, advisor, and control. The `AutonomyPilot` class exposes a `run()` generator yielding raw `ActuatorCommand` tuples (`steer`, `throttle`, `brake`). It handles:
+Central orchestrator that binds sensors, perception, navigation, advisor, and control. The `AutonomyPilot` class exposes a `run()` generator yielding raw `ActuatorCommand` tuples (`steer`, `throttle`, `brake`) and provides live `PilotSnapshot` telemetry for observers such as the GUI. It handles:
 - Camera startup and graceful shutdown.
-- Polling the natural-language `CommandInterface`.
+- Polling the natural-language `CommandInterface` and honoring programmatic command injections via `submit_command()`.
 - Passing frames through the `ObjectDetector` and `Navigator` to compute motion plans.
 - Invoking the `SituationalAdvisor` to enrich decisions with traffic-law directives and emergency stops.
 - Feeding `NavigationDecision` objects into the `Controller` for smoothing and actuator scaling.
@@ -54,7 +55,7 @@ Defines `CameraSensor`, a thin wrapper around OpenCV’s `VideoCapture` that exp
 Wraps Ultralytics YOLO to produce `PerceptionSummary` objects containing detections, obstacle density metrics, and frame metadata. Configuration toggles allow adjusting model name, confidence, and IoU thresholds.
 
 ### `autonomy/ai/command_interface.py`
-Parses human directives such as “drive 2 m forward” or “turn around” into structured `HighLevelCommand` dataclasses. Supports live updates via a watched text file, default commands, and exports of the latest parsed state.
+Parses human directives such as “drive 2 m forward” or “turn around” into structured `HighLevelCommand` dataclasses. Supports live updates via a watched text file, direct programmatic updates (used by the GUI), default commands, and exports of the latest parsed state.
 
 ### `autonomy/ai/advisor.py`
 Implements the multimodal `SituationalAdvisor` that fuses YOLO detections with BLIP image captions and FLAN-T5 reasoning. It emits textual guidance (e.g., “use the bike lane”) and can set `enforced_stop` flags when detecting pedestrians, stop signs, or conflicting instructions.
@@ -66,7 +67,10 @@ Holds the `Navigator`, which converts perception results and parsed commands int
 Translates navigation decisions into normalized actuator commands. Implements PID-style smoothing, braking prioritization during hazards or enforced stops, and ensures outputs stay within [-1, 1] bounds expected by downstream actuators.
 
 ### `autonomy/utils/data_structures.py`
-Defines the shared dataclasses (`ActuatorCommand`, `PerceptionObject`, `NavigationDecision`, etc.) that flow between modules, ensuring type consistency and easy telemetry serialization.
+Defines the shared dataclasses (`ActuatorCommand`, `PerceptionObject`, `NavigationDecision`, `PilotSnapshot`, etc.) that flow between modules, ensuring type consistency and easy telemetry serialization.
+
+### `autonomy/gui/`
+PyQt-based user interface package. `dashboard.py` implements the interactive control room that can run the setup script, start/stop the pilot, send advisor commands, monitor logs, and show a live video feed with steering/throttle/brake overlays. `__init__.py` exposes a simple `launch_dashboard()` helper for scripting integrations.
 
 ### `autonomy/utils/filters.py`
 Contains helper functions for exponential smoothing of speed/steering signals, reducing oscillations in tight spaces.

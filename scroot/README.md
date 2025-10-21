@@ -12,6 +12,7 @@ This package contains a self-contained autonomous driving stack tailored for lig
 - Command parser that understands phrases such as "drive to the plaza", "drive 2 m forward", or "turn right" and feeds them into the navigator.
 - Structured state export (`logs/command_state.json`, `logs/advisor_state.json`) for telemetry, remote supervision, or UI dashboards.
 - Modular design that allows future sensors (ultrasonic, LiDAR, depth) to feed into the navigator without architectural changes.
+- PyQt dashboard that can provision dependencies, launch/stop the pilot, send natural-language commands, and visualize live video with actuator overlays and logs.
 
 ## Quick Start
 
@@ -44,6 +45,14 @@ This package contains a self-contained autonomous driving stack tailored for lig
    ```
 
    Press `q` in the visualization window or send `Ctrl+C` to exit.
+
+5. **(Optional) Use the graphical dashboard** after the environment is active:
+
+   ```bash
+   python -m autonomy.gui.dashboard
+   ```
+
+   The GUI provides buttons to run the bootstrap script, start/stop the autonomy loop, send commands to the advisor, inspect logs, and watch a live feed with steer/throttle/brake overlays.
 
 ### Bootstrap Script Options
 

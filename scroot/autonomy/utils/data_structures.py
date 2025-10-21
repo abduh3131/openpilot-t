@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
+import numpy as np
+
 
 @dataclass(frozen=True)
 class DetectedObject:
@@ -72,3 +74,14 @@ class AdvisorDirective:
     directive: str
     enforced_stop: bool
     caption: str
+
+
+@dataclass(frozen=True)
+class PilotSnapshot:
+    """Full-state snapshot produced on every pilot iteration for observers."""
+
+    frame: np.ndarray
+    perception: PerceptionSummary
+    decision: NavigationDecision
+    command: ActuatorCommand
+    timestamp: float

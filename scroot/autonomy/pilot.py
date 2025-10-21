@@ -8,6 +8,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
+from threading import Lock
 from typing import Iterator, Optional
 
 import cv2
@@ -25,6 +26,7 @@ from autonomy.utils.data_structures import (
     HighLevelCommand,
     NavigationDecision,
     PerceptionSummary,
+    PilotSnapshot,
 )
 
 
@@ -85,17 +87,31 @@ class AutonomyPilot:
         self._running = False
         self._latest_decision: Optional[NavigationDecision] = None
         self._latest_directive: Optional[AdvisorDirective] = None
+        self._latest_snapshot: Optional[PilotSnapshot] = None
+        self._state_lock = Lock()
 
         if self.config.visualize or self.config.advisor_state_path or self.config.command_state_path:
             self.config.log_dir.mkdir(parents=True, exist_ok=True)
 
     @property
     def latest_decision(self) -> Optional[NavigationDecision]:
-        return self._latest_decision
+        with self._state_lock:
+            return self._latest_decision
 
     @property
     def latest_directive(self) -> Optional[AdvisorDirective]:
-        return self._latest_directive
+        with self._state_lock:
+            return self._latest_directive
+
+    @property
+    def latest_snapshot(self) -> Optional[PilotSnapshot]:
+        with self._state_lock:
+            return self._latest_snapshot
+
+    @property
+    def latest_command(self) -> Optional[ActuatorCommand]:
+        with self._state_lock:
+            return self._latest_snapshot.command if self._latest_snapshot else None
 
     def run(self) -> Iterator[ActuatorCommand]:
         logging.info("Starting autonomous pilot loop")
@@ -131,9 +147,18 @@ class AutonomyPilot:
                     decision = replace(decision, desired_speed=0.0, hazard_level=1.0)
 
             command = self._controller.command(decision)
+            snapshot = PilotSnapshot(
+                frame=frame.copy(),
+                perception=perception_summary,
+                decision=decision,
+                command=command,
+                timestamp=time.time(),
+            )
 
-            self._latest_decision = decision
-            self._latest_directive = advisor_directive
+            with self._state_lock:
+                self._latest_decision = decision
+                self._latest_directive = advisor_directive
+                self._latest_snapshot = snapshot
 
             if self.config.visualize:
                 self._visualize(frame, perception_summary, decision, command)
@@ -167,6 +192,15 @@ class AutonomyPilot:
             path = self.config.advisor_state_path
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def submit_command(self, text: str) -> Optional[HighLevelCommand]:
+        if not self._command_interface:
+            logging.warning("Command interface not configured; ignoring command: %s", text)
+            return None
+
+        command = self._command_interface.update_command(text)
+        logging.info("Accepted operator command: %s", command.raw_text)
+        return command
 
     def _visualize(
         self,
