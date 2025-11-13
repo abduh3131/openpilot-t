@@ -9,12 +9,14 @@ if [[ ! -d "${ENV_DIR}" ]]; then
   exit 1
 fi
 
+echo "[pwm-bridge] Activating virtual environment at ${ENV_DIR}" >&2
 source "${ENV_DIR}/bin/activate"
 
 OUTPUT_DIR="${PWM_OUTPUT_DIR:-${HOME}/openpilot_pwm}"
 OUTPUT_FILE="${OUTPUT_DIR}/pwm_capture.csv"
 
 mkdir -p "${OUTPUT_DIR}"
+echo "[pwm-bridge] Writing PWM CSV to ${OUTPUT_FILE}" >&2
 
 cleanup() {
   for pid in ${PIDS[@]:-}; do
@@ -24,15 +26,18 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
+echo "[pwm-bridge] Starting openpilot in webcam simulator mode" >&2
 USE_WEBCAM=1 ./tools/sim/launch_openpilot.sh &
 PIDS=($!)
 
 sleep 10
 
+echo "[pwm-bridge] Spinning up simulator bridge" >&2
 USE_WEBCAM=1 SIMULATOR=1 python -m openpilot.tools.sim.run_bridge &
 PIDS+=($!)
 
 sleep 5
 
+echo "[pwm-bridge] Mirroring CAN traffic to PWM CSV" >&2
 python -m openpilot.selfdrive.pwm_bridge.bridge "${OUTPUT_FILE}"
 
