@@ -79,6 +79,8 @@ class Car:
     self.params = Params()
 
     self.can_callbacks = can_comm_callbacks(self.can_sock, self.pm.sock['sendcan'])
+    self.raw_actuators_only = bool(os.environ.get("RAW_ACTUATORS_ONLY")) or self.params.get_bool("RawActuatorsOnly")
+    self._raw_actuators_only_logged = False
 
     is_release = self.params.get_bool("IsReleaseBranch")
 
@@ -239,7 +241,12 @@ class Car:
       # send car controls over can
       now_nanos = self.can_log_mono_time if REPLAY else int(time.monotonic() * 1e9)
       self.last_actuators_output, can_sends = self.CI.apply(CC, now_nanos)
-      self.pm.send('sendcan', can_list_to_can_capnp(can_sends, msgtype='sendcan', valid=CS.canValid))
+      if self.raw_actuators_only:
+        if not self._raw_actuators_only_logged:
+          cloudlog.warning("RAW_ACTUATORS_ONLY enabled: skipping CAN sends and publishing carOutput only.")
+          self._raw_actuators_only_logged = True
+      else:
+        self.pm.send('sendcan', can_list_to_can_capnp(can_sends, msgtype='sendcan', valid=CS.canValid))
 
       self.CC_prev = CC
 
